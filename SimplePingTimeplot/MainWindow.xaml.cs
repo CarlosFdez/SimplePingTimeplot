@@ -57,7 +57,7 @@ namespace SimplePingTimeplot
         {
             Label = label;
             Website = website;
-            Points = pingTimestamps.Select(t => new DataPoint((DateTime.Now - t.Time).Seconds, t.Ping));
+            Points = pingTimestamps.Select(t => new DataPoint((DateTime.Now - t.Time).TotalSeconds, t.Ping));
         }
 
         public void Start(OnUpdate onUpdate)
