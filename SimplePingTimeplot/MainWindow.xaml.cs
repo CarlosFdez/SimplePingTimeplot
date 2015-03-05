@@ -111,7 +111,7 @@ namespace SimplePingTimeplot
                 {
                     Position = AxisPosition.Bottom,
                     Title = "Time Ago",
-                    Unit = "Milliseconds",
+                    Unit = "Seconds",
                     EndPosition = 0,
                     StartPosition = 1,
                     IsZoomEnabled = false
