@@ -34,6 +34,71 @@ namespace SimplePingTimeplot
         }
     }
 
+    public class PingTracker
+    {
+        private class PingTimestamp
+        {
+            public DateTime Time { get; set; }
+            public int Ping {get; set; }
+        }
+
+        private bool isRunning;
+        private IDisposable unsubscriber;
+        private List<PingTimestamp> pingTimestamps = new List<PingTimestamp>();
+
+        public IEnumerable<DataPoint> Points { get; private set; }
+
+        public string Label { get; private set; }
+        public string Website { get; private set; }
+
+        public delegate void OnUpdate();
+
+        public PingTracker(string label, string website)
+        {
+            Label = label;
+            Website = website;
+            Points = pingTimestamps.Select(t => new DataPoint((DateTime.Now - t.Time).Seconds, t.Ping));
+        }
+
+        public void Start(OnUpdate onUpdate)
+        {
+            if (isRunning)
+            {
+                throw new InvalidOperationException("already started");
+            }
+
+            unsubscriber = Observable
+                .Interval(TimeSpan.FromSeconds(1))
+                .Subscribe(idx =>
+                {
+                    var timestamp = DateTime.Now;
+                    var ping = GetPing();
+
+                    pingTimestamps.Add(new PingTimestamp() { Time = timestamp, Ping = (int)ping });
+
+                    onUpdate();
+                });
+
+            isRunning = true;
+        }
+
+        public void Stop()
+        {
+            if (!isRunning)
+            {
+                throw new InvalidOperationException("not running");
+            }
+
+            unsubscriber.Dispose(); // top the asynchronous
+            isRunning = false;
+        }
+
+        private long GetPing()
+        {
+            return new Ping().Send(Website).RoundtripTime;
+        }
+    }
+
     public class ApplicationViewModel : INotifyPropertyChanged
     {
         public PlotModel PlotModel { get; set; }
@@ -46,7 +111,10 @@ namespace SimplePingTimeplot
                 {
                     Position = AxisPosition.Bottom,
                     Title = "Time Ago",
-                    Unit = "Milliseconds"
+                    Unit = "Milliseconds",
+                    EndPosition = 0,
+                    StartPosition = 1,
+                    IsZoomEnabled = false
                 });
 
             PlotModel.Axes.Add(new LinearAxis()
@@ -54,10 +122,9 @@ namespace SimplePingTimeplot
                     Position = AxisPosition.Left,
                     Title = "Ping",
                     Unit = "Milliseconds",
-                    AbsoluteMinimum = 0,
-                    AbsoluteMaximum = 2000,
                     Minimum = 0,
-                    Maximum = 700
+                    Maximum = 700,
+                    IsZoomEnabled = false
                 });
 
             AddSite("Google", "www.google.com");
@@ -70,22 +137,9 @@ namespace SimplePingTimeplot
             PlotModel.Series.Add(series);
             series.Title = label;
 
-            Observable.Interval(TimeSpan.FromSeconds(1))
-                .Subscribe((idx) =>
-                {
-                    var timestamp = DateTime.Now;
-                    var ping = GetPing();
-
-                    Console.WriteLine(PlotModel.Series.Count());
-                    series.Points.Add(new DataPoint(idx, ping));
-                    PlotModel.InvalidatePlot(true);
-                });
-
-        }
-
-        public long GetPing()
-        {
-            return new Ping().Send("www.google.com").RoundtripTime;
+            var tracker = new PingTracker(label, website);
+            series.ItemsSource = tracker.Points;
+            tracker.Start(() => PlotModel.InvalidatePlot(true));
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
