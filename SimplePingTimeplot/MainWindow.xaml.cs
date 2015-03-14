@@ -46,7 +46,7 @@ namespace SimplePingTimeplot
         private IDisposable unsubscriber;
         private List<PingTimestamp> pingTimestamps = new List<PingTimestamp>();
 
-        public IEnumerable<DataPoint> Points { get; private set; }
+        public IEnumerable<DataPoint> PingPoints { get; private set; }
 
         public string Label { get; private set; }
         public string Website { get; private set; }
@@ -57,7 +57,7 @@ namespace SimplePingTimeplot
         {
             Label = label;
             Website = website;
-            Points = pingTimestamps.Select(t => new DataPoint((DateTime.Now - t.Time).TotalSeconds, t.Ping));
+            PingPoints = pingTimestamps.Select(t => new DataPoint((DateTime.Now - t.Time).TotalMinutes, t.Ping));
         }
 
         public void Start(OnUpdate onUpdate)
@@ -67,19 +67,22 @@ namespace SimplePingTimeplot
                 throw new InvalidOperationException("already started");
             }
 
+            PerformUpdate(onUpdate);
             unsubscriber = Observable
-                .Interval(TimeSpan.FromSeconds(1))
-                .Subscribe(idx =>
-                {
-                    var timestamp = DateTime.Now;
-                    var ping = GetPing();
-
-                    pingTimestamps.Add(new PingTimestamp() { Time = timestamp, Ping = (int)ping });
-
-                    onUpdate();
-                });
+                .Interval(TimeSpan.FromSeconds(5))
+                .Subscribe(idx => PerformUpdate(onUpdate));
 
             isRunning = true;
+        }
+
+        private void PerformUpdate(OnUpdate onUpdate)
+        {
+            var timestamp = DateTime.Now;
+            var ping = GetPing();
+
+            pingTimestamps.Add(new PingTimestamp() { Time = timestamp, Ping = (int)ping });
+
+            onUpdate();
         }
 
         public void Stop()
@@ -111,7 +114,7 @@ namespace SimplePingTimeplot
                 {
                     Position = AxisPosition.Bottom,
                     Title = "Time Ago",
-                    Unit = "Seconds",
+                    Unit = "Minutes",
                     EndPosition = 0,
                     StartPosition = 1,
                     IsZoomEnabled = false
@@ -138,7 +141,7 @@ namespace SimplePingTimeplot
             series.Title = label;
 
             var tracker = new PingTracker(label, website);
-            series.ItemsSource = tracker.Points;
+            series.ItemsSource = tracker.PingPoints;
             tracker.Start(() => PlotModel.InvalidatePlot(true));
         }
 
