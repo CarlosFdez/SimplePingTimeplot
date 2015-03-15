@@ -23,14 +23,30 @@ using System.ComponentModel;
 
 namespace SimplePingTimeplot
 {
+
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow
     {
         public MainWindow()
         {
             InitializeComponent();
+        }
+
+        private void chrome_closeButton_Click(object sender, RoutedEventArgs e)
+        {
+            SystemCommands.CloseWindow(this);
+        }
+
+        private void chrome_minimizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = (WindowState != WindowState.Minimized) ? WindowState.Minimized : WindowState.Normal;
+        }
+
+        private void chrome_maximizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = (WindowState != WindowState.Maximized) ? WindowState.Maximized : WindowState.Normal;
         }
     }
 
